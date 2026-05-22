@@ -705,14 +705,12 @@ function handleImageSelect(e) {
   if (!file) return;
   pendingFile = file;
 
-  const reader = new FileReader();
-  reader.onload = ev => {
-    document.getElementById('pendingThumb').src = ev.target.result;
-    document.getElementById('pendingName').textContent = file.name;
-    document.getElementById('pendingImage').style.display = 'flex';
-    document.getElementById('imgBtn').classList.add('has-img');
-  };
-  reader.readAsDataURL(file);
+  // Use objectURL for preview (reliable on Android)
+  const objectURL = URL.createObjectURL(file);
+  document.getElementById('pendingThumb').src = objectURL;
+  document.getElementById('pendingName').textContent = file.name;
+  document.getElementById('pendingImage').style.display = 'flex';
+  document.getElementById('imgBtn').classList.add('has-img');
 }
 
 function removePendingImage() {
@@ -976,14 +974,32 @@ function escapeHtml(str) {
 }
 
 // ====================================================
-// FILE TO BASE64
+// FILE TO BASE64 via Canvas (works on Android)
 // ====================================================
 function fileToDataURL(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result);
-    reader.onerror = () => reject(new Error('Could not read file'));
-    reader.readAsDataURL(file);
+    const objectURL = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.naturalWidth  || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL('image/png');
+        URL.revokeObjectURL(objectURL);
+        resolve(dataURL);
+      } catch (e) {
+        URL.revokeObjectURL(objectURL);
+        reject(new Error('Canvas draw failed: ' + e.message));
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectURL);
+      reject(new Error('Image failed to load from file'));
+    };
+    img.src = objectURL;
   });
 }
 
