@@ -974,32 +974,37 @@ function escapeHtml(str) {
 }
 
 // ====================================================
-// FILE TO BASE64 via Canvas (works on Android)
+// FILE TO BASE64 using the already-displayed thumbnail
+// The thumbnail is already loaded on screen, so we
+// just draw it onto a canvas. No second file read needed.
 // ====================================================
 function fileToDataURL(file) {
   return new Promise((resolve, reject) => {
-    const objectURL = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
+    const img = document.getElementById('pendingThumb');
+
+    const doCanvas = () => {
       try {
+        const w = img.naturalWidth  || img.width  || 800;
+        const h = img.naturalHeight || img.height || 600;
         const canvas = document.createElement('canvas');
-        canvas.width  = img.naturalWidth  || img.width;
-        canvas.height = img.naturalHeight || img.height;
+        canvas.width  = w;
+        canvas.height = h;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, w, h);
         const dataURL = canvas.toDataURL('image/png');
-        URL.revokeObjectURL(objectURL);
         resolve(dataURL);
       } catch (e) {
-        URL.revokeObjectURL(objectURL);
-        reject(new Error('Canvas draw failed: ' + e.message));
+        reject(new Error('Canvas failed: ' + e.message));
       }
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(objectURL);
-      reject(new Error('Image failed to load from file'));
-    };
-    img.src = objectURL;
+
+    // If already loaded just draw it, otherwise wait
+    if (img.complete && img.naturalWidth > 0) {
+      doCanvas();
+    } else {
+      img.onload  = doCanvas;
+      img.onerror = () => reject(new Error('Thumbnail not ready'));
+    }
   });
 }
 
