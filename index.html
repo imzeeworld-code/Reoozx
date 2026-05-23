@@ -1,1027 +1,648 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Vision AI Assistant</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #060910;
-  --surface: #0d1117;
-  --surface2: #161b22;
-  --border: #21262d;
-  --accent: #58a6ff;
-  --accent2: #3fb950;
-  --orange: #f0883e;
-  --text: #e6edf3;
-  --muted: #8b949e;
-  --user-bubble: #1c2d3f;
-  --ai-bubble: #161b22;
-  --danger: #f85149;
-}
+  :root {
+    --bg: #0e0e11;
+    --surface: #17171c;
+    --border: #2a2a33;
+    --accent: #c8f060;
+    --accent2: #7b6ef6;
+    --text: #f0f0f0;
+    --muted: #7a7a8a;
+    --danger: #f06060;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+  /* HEADER */
+  header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display:flex; align-items:center; gap:10px; }
+  .avatar {
+    width:36px; height:36px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px;
+  }
+  header h1 { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; }
+  .status { font-size:10px; color:var(--accent); display:flex; align-items:center; gap:4px; margin-top:1px; }
+  .dot { width:5px; height:5px; background:var(--accent); border-radius:50%; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Syne', sans-serif;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+  .settings-btn {
+    background: var(--border);
+    border: none;
+    color: var(--text);
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display:flex; align-items:center; justify-content:center;
+    transition: background 0.2s;
+  }
+  .settings-btn:hover { background: var(--accent2); }
 
-/* ---- SETUP SCREEN ---- */
-#setupScreen {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 28px 20px;
-  gap: 0;
-  animation: fadeIn 0.5s ease both;
-}
+  /* SETTINGS PANEL */
+  .panel-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: flex-end;
+  }
+  .panel-overlay.open { display: flex; }
+  .panel {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    padding: 24px 20px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
 
-.logo-wrap {
-  margin-bottom: 24px;
-  text-align: center;
-}
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .close-btn {
+    background: var(--border);
+    border: none;
+    color: var(--text);
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display:flex; align-items:center; justify-content:center;
+  }
 
-.logo-svg {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 14px;
-  display: block;
-}
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 7px;
+    font-family: 'Syne', sans-serif;
+  }
+  .field input, .field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent2); }
+  .field input[type=password] { letter-spacing: 0.08em; }
 
-.logo-wrap h1 {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
 
-.logo-wrap p {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 5px;
-  font-weight: 400;
-  font-family: 'JetBrains Mono', monospace;
-}
+  .save-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 14px;
+    padding: 13px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .save-btn:hover { opacity: 0.85; }
 
-.setup-card {
-  width: 100%;
-  max-width: 420px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px 20px;
-}
+  .key-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 5px;
+    line-height: 1.5;
+  }
+  .key-hint a { color: var(--accent2); text-decoration: none; }
 
-.setup-card label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 1.5px;
-  margin-bottom: 10px;
-  font-family: 'JetBrains Mono', monospace;
-}
+  /* CHAT */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scroll-behavior: smooth;
+  }
+  #chat::-webkit-scrollbar { width: 3px; }
+  #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-.input-row {
-  display: flex;
-  gap: 8px;
-}
+  .msg { display:flex; flex-direction:column; gap:4px; max-width:86%; animation:fadeUp 0.25s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .msg.user { align-self:flex-end; align-items:flex-end; }
+  .msg.ai { align-self:flex-start; align-items:flex-start; }
 
-.setup-card input {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  padding: 13px 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
+  .lbl { font-size:10px; color:var(--muted); padding:0 4px; font-family:'Syne',sans-serif; text-transform:uppercase; letter-spacing:0.05em; }
 
-.setup-card input:focus { border-color: var(--accent); }
-.setup-card input::placeholder { color: var(--muted); }
+  .bubble {
+    padding: 11px 15px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  .msg.user .bubble { background:var(--accent2); color:#fff; border-bottom-right-radius:4px; }
+  .msg.ai .bubble { background:var(--surface); border:1px solid var(--border); border-bottom-left-radius:4px; }
 
-.btn-start {
-  padding: 13px 18px;
-  background: linear-gradient(135deg, var(--accent), #1a6ed8);
-  border: none;
-  border-radius: 10px;
-  color: #fff;
-  font-family: 'Syne', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
-  white-space: nowrap;
-}
+  .msg-actions { display:flex; gap:6px; padding:0 4px; }
+  .speak-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    cursor: pointer;
+    display:flex; align-items:center; gap:5px;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .speak-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .speak-btn.playing { border-color:var(--accent); color:var(--accent); }
+  .speak-btn:disabled { opacity:0.4; pointer-events:none; }
 
-.btn-start:active { transform: scale(0.96); }
+  .typing {
+    display:flex; gap:5px; align-items:center;
+    padding:13px 16px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px; border-bottom-left-radius:4px;
+    width:fit-content;
+  }
+  .typing span {
+    width:7px; height:7px;
+    background:var(--muted);
+    border-radius:50%;
+    animation:bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2){animation-delay:.2s}
+  .typing span:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
 
-.model-select {
-  margin-top: 14px;
-}
+  /* WELCOME */
+  .welcome { text-align:center; padding:40px 20px; color:var(--muted); }
+  .welcome h2 { font-family:'Syne',sans-serif; font-size:20px; color:var(--text); margin-bottom:8px; }
+  .welcome p { font-size:13px; line-height:1.7; }
+  .welcome .setup-note {
+    margin-top:16px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px;
+    font-size:12px;
+    color:var(--accent);
+    line-height:1.6;
+  }
 
-.model-select select {
-  width: 100%;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  padding: 13px 14px;
-  outline: none;
-  appearance: none;
-  cursor: pointer;
-}
+  /* FOOTER */
+  footer {
+    padding: 10px 14px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .input-row {
+    display:flex; gap:8px; align-items:flex-end;
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:22px;
+    padding:7px 7px 7px 14px;
+    transition:border-color 0.2s;
+  }
+  .input-row:focus-within { border-color:var(--accent2); }
+  textarea {
+    flex:1;
+    background:none;
+    border:none;
+    outline:none;
+    color:var(--text);
+    font-family:'DM Sans',sans-serif;
+    font-size:14px;
+    resize:none;
+    max-height:90px;
+    line-height:1.5;
+    padding:4px 0;
+  }
+  textarea::placeholder { color:var(--muted); }
+  .send-btn {
+    width:34px; height:34px;
+    background:var(--accent);
+    border:none;
+    border-radius:50%;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    transition:transform 0.15s, opacity 0.2s;
+  }
+  .send-btn:hover { transform:scale(1.08); }
+  .send-btn:disabled { opacity:0.35; pointer-events:none; }
+  .hint { text-align:center; font-size:10px; color:var(--muted); margin-top:7px; }
 
-.setup-note {
-  margin-top: 14px;
-  font-size: 12px;
-  color: var(--muted);
-  font-family: 'JetBrains Mono', monospace;
-  line-height: 1.6;
-  text-align: center;
-}
-
-.setup-note span {
-  color: var(--accent2);
-}
-
-/* ---- CHAT SCREEN ---- */
-#chatScreen {
-  flex: 1;
-  display: none;
-  flex-direction: column;
-  height: 100dvh;
-  overflow: hidden;
-}
-
-/* TOP BAR */
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  flex-shrink: 0;
-}
-
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent2);
-  box-shadow: 0 0 6px var(--accent2);
-  animation: pulse-dot 2s infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-.topbar-title {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.topbar-sub {
-  font-size: 11px;
-  color: var(--muted);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.btn-logout {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
-}
-.btn-logout:hover { color: var(--danger); border-color: var(--danger); }
-
-/* MESSAGES */
-#messagesWrap {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-
-/* Welcome message */
-.welcome-msg {
-  text-align: center;
-  padding: 30px 10px;
-  color: var(--muted);
-}
-.welcome-msg svg { margin: 0 auto 12px; display: block; }
-.welcome-msg h3 { font-size: 16px; color: var(--text); margin-bottom: 6px; }
-.welcome-msg p { font-size: 13px; line-height: 1.6; }
-
-/* Message bubbles */
-.msg {
-  display: flex;
-  gap: 10px;
-  animation: msgIn 0.3s ease both;
-  max-width: 100%;
-}
-
-@keyframes msgIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.msg.user { flex-direction: row-reverse; }
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.avatar.ai-av {
-  background: linear-gradient(135deg, var(--accent), #1a6ed8);
-}
-
-.avatar.user-av {
-  background: linear-gradient(135deg, var(--orange), #c0392b);
-  font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.bubble {
-  max-width: calc(100% - 80px);
-  padding: 12px 15px;
-  border-radius: 14px;
-  font-size: 14px;
-  line-height: 1.65;
-  word-break: break-word;
-  border: 1px solid var(--border);
-}
-
-.msg.ai .bubble {
-  background: var(--ai-bubble);
-  border-radius: 4px 14px 14px 14px;
-  color: var(--text);
-}
-
-.msg.user .bubble {
-  background: var(--user-bubble);
-  border-radius: 14px 4px 14px 14px;
-  color: var(--text);
-  text-align: left;
-}
-
-/* Image pill inside user bubble */
-.img-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(88,166,255,0.12);
-  border: 1px solid rgba(88,166,255,0.25);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--accent);
-  margin-bottom: 6px;
-  width: fit-content;
-}
-
-/* Typing indicator */
-.typing-indicator {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-  padding: 14px 15px;
-}
-
-.typing-indicator span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--muted);
-  animation: typing 1.2s infinite;
-}
-
-.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes typing {
-  0%, 100% { transform: translateY(0); opacity: 0.4; }
-  50%       { transform: translateY(-5px); opacity: 1; }
-}
-
-/* OCR scanning overlay on chat */
-.ocr-bar {
-  display: none;
-  align-items: center;
-  gap: 10px;
-  background: rgba(63,185,80,0.08);
-  border-top: 1px solid rgba(63,185,80,0.2);
-  border-bottom: 1px solid rgba(63,185,80,0.2);
-  padding: 10px 16px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--accent2);
-  flex-shrink: 0;
-}
-
-.ocr-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(63,185,80,0.2);
-  border-top-color: var(--accent2);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.ocr-progress-bg {
-  flex: 1;
-  height: 3px;
-  background: rgba(63,185,80,0.15);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.ocr-progress-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--accent2);
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}
-
-/* INPUT BAR */
-.input-bar {
-  border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding: 12px 14px;
-  flex-shrink: 0;
-}
-
-/* Uploaded image preview above input */
-.pending-image {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px 12px;
-  margin-bottom: 10px;
-  font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--accent);
-}
-
-.pending-image img {
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
-  border-radius: 6px;
-}
-
-.pending-image .pending-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-}
-
-.pending-remove {
-  background: none;
-  border: none;
-  color: var(--danger);
-  cursor: pointer;
-  font-size: 16px;
-  padding: 0 4px;
-  line-height: 1;
-}
-
-.input-row-chat {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-/* Image upload button */
-.btn-img {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color 0.2s, background 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-img input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-}
-
-.btn-img:hover, .btn-img.has-img { border-color: var(--accent); background: rgba(88,166,255,0.08); }
-
-#chatInput {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text);
-  font-family: 'Syne', sans-serif;
-  font-size: 14px;
-  padding: 12px 14px;
-  outline: none;
-  resize: none;
-  max-height: 120px;
-  line-height: 1.5;
-  transition: border-color 0.2s;
-}
-
-#chatInput:focus { border-color: var(--accent); }
-#chatInput::placeholder { color: var(--muted); }
-
-.btn-send {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  border: none;
-  background: linear-gradient(135deg, var(--accent), #1a6ed8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: opacity 0.2s, transform 0.1s;
-}
-
-.btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-send:not(:disabled):active { transform: scale(0.93); }
-
-/* ANIMATIONS */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
+  .no-key-bar {
+    background: rgba(192,96,96,0.15);
+    border: 1px solid var(--danger);
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-size: 12px;
+    color: var(--danger);
+    text-align: center;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
 
-<!-- ============ SETUP SCREEN ============ -->
-<div id="setupScreen">
-  <div class="logo-wrap">
-    <!-- Brain/AI SVG logo -->
-    <svg class="logo-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="30" fill="url(#grad1)" opacity="0.15"/>
-      <path d="M20 26c0-6.627 5.373-12 12-12s12 5.373 12 12c0 4.5-2.5 8.4-6.2 10.5" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round"/>
-      <path d="M20 26c0 4.5 2.5 8.4 6.2 10.5" stroke="#3fb950" stroke-width="2.5" stroke-linecap="round"/>
-      <circle cx="32" cy="38" r="4" fill="#58a6ff"/>
-      <path d="M32 42v8" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round"/>
-      <path d="M26 48h12" stroke="#3fb950" stroke-width="2.5" stroke-linecap="round"/>
-      <circle cx="20" cy="26" r="3" fill="#3fb950"/>
-      <circle cx="44" cy="26" r="3" fill="#f0883e"/>
-      <defs>
-        <linearGradient id="grad1" x1="0" y1="0" x2="64" y2="64">
-          <stop offset="0%" stop-color="#58a6ff"/>
-          <stop offset="100%" stop-color="#3fb950"/>
-        </linearGradient>
-      </defs>
-    </svg>
-    <h1>Vision AI</h1>
-    <p>// reads images. thinks in text.</p>
+<header>
+  <div class="header-left">
+    <div class="avatar">🤖</div>
+    <div>
+      <h1>AI Assistant</h1>
+      <div class="status"><div class="dot"></div><span id="statusText">Ready</span></div>
+    </div>
   </div>
+  <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
+</header>
 
-  <div class="setup-card">
-    <label>GROQ API KEY</label>
-    <div class="input-row">
-      <input type="password" id="apiKeyInput" placeholder="gsk_..." autocomplete="off"/>
-      <button class="btn-start" onclick="startChat()">START</button>
+<!-- SETTINGS PANEL -->
+<div class="panel-overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="panel">
+    <div class="panel-title">
+      Settings
+      <button class="close-btn" onclick="closeSettings()">✕</button>
     </div>
 
-    <div class="model-select">
-      <label style="margin-top:16px;">AI MODEL</label>
-      <select id="modelSelect">
-        <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Best)</option>
-        <option value="llama-3.1-8b-instant">Llama 3.1 8B (Fastest)</option>
-        <option value="gemma2-9b-it">Gemma 2 9B</option>
-        <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
-      </select>
-    </div>
-
-    <p class="setup-note">
-      Your key stays <span>only on your device</span>.<br/>
-      Never sent anywhere except Groq's servers.
-    </p>
-  </div>
-</div>
-
-<!-- ============ CHAT SCREEN ============ -->
-<div id="chatScreen">
-
-  <!-- TOP BAR -->
-  <div class="topbar">
-    <div class="topbar-left">
-      <div class="status-dot"></div>
-      <div>
-        <div class="topbar-title">Vision AI</div>
-        <div class="topbar-sub" id="modelLabel">llama-3.3-70b</div>
+    <div class="field">
+      <label>Groq API Key</label>
+      <input type="password" id="groqKey" placeholder="gsk_..." />
+      <div class="key-hint">
+        Free key at <a href="https://console.groq.com" target="_blank">console.groq.com</a> → API Keys → Create key
       </div>
     </div>
-    <button class="btn-logout" onclick="logout()">CHANGE KEY</button>
-  </div>
 
-  <!-- MESSAGES -->
-  <div id="messagesWrap">
-    <div class="welcome-msg">
-      <!-- Eye SVG -->
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-        <circle cx="20" cy="20" r="18" stroke="#21262d" stroke-width="2"/>
-        <ellipse cx="20" cy="20" rx="10" ry="7" stroke="#58a6ff" stroke-width="2"/>
-        <circle cx="20" cy="20" r="4" fill="#3fb950"/>
-        <circle cx="21.5" cy="18.5" r="1.2" fill="white" opacity="0.8"/>
-      </svg>
-      <h3>Ready to help</h3>
-      <p>Type a message or upload an image.<br/>I will read any text inside it and respond.</p>
-    </div>
-  </div>
-
-  <!-- OCR SCANNING BAR -->
-  <div class="ocr-bar" id="ocrBar">
-    <div class="ocr-spinner"></div>
-    <span id="ocrStatus">Reading image text...</span>
-    <div class="ocr-progress-bg">
-      <div class="ocr-progress-fill" id="ocrFill"></div>
-    </div>
-    <span id="ocrPct">0%</span>
-  </div>
-
-  <!-- INPUT BAR -->
-  <div class="input-bar">
-    <!-- Pending image preview -->
-    <div class="pending-image" id="pendingImage">
-      <img id="pendingThumb" src="" alt=""/>
-      <span class="pending-name" id="pendingName">image.jpg</span>
-      <button class="pending-remove" onclick="removePendingImage()">x</button>
+    <div class="field">
+      <label>Hugging Face Token (for voice)</label>
+      <input type="password" id="hfToken" placeholder="hf_..." />
+      <div class="key-hint">
+        From <a href="https://huggingface.co/settings/tokens" target="_blank">huggingface.co/settings/tokens</a>
+      </div>
     </div>
 
-    <div class="input-row-chat">
-      <!-- Image upload button -->
-      <label class="btn-img" id="imgBtn" title="Upload image">
-        <input type="file" id="imgInput" accept="image/*" onchange="handleImageSelect(event)"/>
-        <!-- Camera/image SVG -->
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="6" width="20" height="15" rx="3"/>
-          <circle cx="12" cy="13.5" r="3.5"/>
-          <path d="M8 6l1.5-3h5L16 6"/>
-        </svg>
-      </label>
+    <div class="field">
+      <label>Voice</label>
+      <div class="select-wrap">
+        <select id="voiceSelect">
+          <optgroup label="🇺🇸 American Female">
+            <option value="af_heart">Heart ❤️ (warm, natural)</option>
+            <option value="af_bella">Bella (smooth)</option>
+            <option value="af_nicole">Nicole (soft)</option>
+            <option value="af_aoede">Aoede (clear)</option>
+            <option value="af_sarah">Sarah (friendly)</option>
+          </optgroup>
+          <optgroup label="🇺🇸 American Male">
+            <option value="am_adam">Adam (deep)</option>
+            <option value="am_michael">Michael (neutral)</option>
+          </optgroup>
+          <optgroup label="🇬🇧 British">
+            <option value="bf_emma">Emma (British female)</option>
+            <option value="bm_george">George (British male)</option>
+            <option value="bm_lewis">Lewis (British male)</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
 
-      <!-- Text input -->
-      <textarea id="chatInput" placeholder="Ask anything..." rows="1"
-        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+  </div>
+</div>
 
-      <!-- Send button -->
-      <button class="btn-send" id="btnSend" onclick="sendMessage()">
-        <!-- Send arrow SVG -->
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13"/>
-          <polygon points="22 2 15 22 11 13 2 9 22 2" fill="white" stroke="none"/>
-        </svg>
-      </button>
+<!-- CHAT -->
+<div id="chat">
+  <div class="welcome">
+    <h2>Hello 👋</h2>
+    <p>Your AI assistant powered by Llama 3.1 with realistic voice.</p>
+    <div class="setup-note">
+      ⚙️ Tap the gear icon to enter your Groq API key and get started.
     </div>
   </div>
 </div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="no-key-bar" id="noKeyBar" onclick="openSettings()" style="display:none">
+    ⚠️ No Groq API key set — tap here to add it
+  </div>
+  <div class="input-row">
+    <textarea id="input" placeholder="Type a message..." rows="1"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+  <div class="hint">Llama 3.1 8B · Kokoro TTS · Free</div>
+</footer>
 
 <script>
-// ====================================================
-// STATE
-// ====================================================
-let groqKey = '';
-let groqModel = 'llama-3.3-70b-versatile';
-let conversation = []; // full chat history for Groq
-let pendingFile = null; // image file waiting to be sent
-let isBusy = false;
+  // ── STATE ──
+  let groqKey = localStorage.getItem('groqKey') || '';
+  let hfToken = localStorage.getItem('hfToken') || '';
+  let voice   = localStorage.getItem('voice')   || 'af_heart';
+  let history = [];
+  let currentAudio = null;
+  let currentSpeakBtn = null;
 
-const SYSTEM_PROMPT = `You are a helpful, smart AI assistant. 
-When the user sends you text that was extracted from an image, treat it naturally as if the user typed it. 
-Help them understand, solve, explain, or work with whatever the text contains.
-Be concise and clear. Format your response for easy reading on a phone screen.`;
+  // ── INIT ──
+  window.onload = () => {
+    document.getElementById('groqKey').value   = groqKey;
+    document.getElementById('hfToken').value   = hfToken;
+    document.getElementById('voiceSelect').value = voice;
+    checkKeyBar();
+  };
 
-// ====================================================
-// SETUP
-// ====================================================
-function startChat() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key || !key.startsWith('gsk_')) {
-    alert('Please enter a valid Groq API key starting with gsk_');
-    return;
+  function checkKeyBar() {
+    document.getElementById('noKeyBar').style.display = groqKey ? 'none' : 'block';
   }
-  groqKey = key;
-  groqModel = document.getElementById('modelSelect').value;
 
-  document.getElementById('setupScreen').style.display = 'none';
-  const cs = document.getElementById('chatScreen');
-  cs.style.display = 'flex';
-  document.getElementById('modelLabel').textContent = groqModel.split('-').slice(0,3).join('-');
-}
+  // ── SETTINGS ──
+  function openSettings()  { document.getElementById('overlay').classList.add('open'); }
+  function closeSettings() { document.getElementById('overlay').classList.remove('open'); }
+  function handleOverlayClick(e) { if (e.target === document.getElementById('overlay')) closeSettings(); }
 
-function logout() {
-  groqKey = '';
-  conversation = [];
-  pendingFile = null;
-  document.getElementById('messagesWrap').innerHTML = `
-    <div class="welcome-msg">
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-        <circle cx="20" cy="20" r="18" stroke="#21262d" stroke-width="2"/>
-        <ellipse cx="20" cy="20" rx="10" ry="7" stroke="#58a6ff" stroke-width="2"/>
-        <circle cx="20" cy="20" r="4" fill="#3fb950"/>
-        <circle cx="21.5" cy="18.5" r="1.2" fill="white" opacity="0.8"/>
-      </svg>
-      <h3>Ready to help</h3>
-      <p>Type a message or upload an image.<br/>I will read any text inside it and respond.</p>
-    </div>`;
-  document.getElementById('chatScreen').style.display = 'none';
-  document.getElementById('setupScreen').style.display = 'flex';
-  document.getElementById('apiKeyInput').value = '';
-}
+  function saveSettings() {
+    groqKey = document.getElementById('groqKey').value.trim();
+    hfToken = document.getElementById('hfToken').value.trim();
+    voice   = document.getElementById('voiceSelect').value;
+    localStorage.setItem('groqKey', groqKey);
+    localStorage.setItem('hfToken', hfToken);
+    localStorage.setItem('voice',   voice);
+    checkKeyBar();
+    closeSettings();
+    setStatus('Settings saved ✓', '#c8f060');
+    setTimeout(() => setStatus('Ready', '#c8f060'), 2000);
+  }
 
-// ====================================================
-// IMAGE SELECTION
-// ====================================================
-function handleImageSelect(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  pendingFile = file;
+  function setStatus(text, color) {
+    const el = document.getElementById('statusText');
+    el.textContent = text;
+    el.style.color = color || '#c8f060';
+  }
 
-  // Use objectURL for preview (reliable on Android)
-  const objectURL = URL.createObjectURL(file);
-  document.getElementById('pendingThumb').src = objectURL;
-  document.getElementById('pendingName').textContent = file.name;
-  document.getElementById('pendingImage').style.display = 'flex';
-  document.getElementById('imgBtn').classList.add('has-img');
-}
+  // ── TEXTAREA ──
+  const inputEl  = document.getElementById('input');
+  const sendBtn  = document.getElementById('sendBtn');
 
-function removePendingImage() {
-  pendingFile = null;
-  document.getElementById('pendingImage').style.display = 'none';
-  document.getElementById('pendingThumb').src = '';
-  document.getElementById('imgInput').value = '';
-  document.getElementById('imgBtn').classList.remove('has-img');
-}
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 90) + 'px';
+  });
 
-// ====================================================
-// SEND MESSAGE
-// ====================================================
-async function sendMessage() {
-  if (isBusy) return;
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
 
-  const input = document.getElementById('chatInput');
-  const userText = input.value.trim();
-  const hasImage = pendingFile !== null;
+  // ── SEND ──
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
 
-  if (!userText && !hasImage) return;
+    if (!groqKey) { openSettings(); return; }
 
-  isBusy = true;
-  document.getElementById('btnSend').disabled = true;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+    setStatus('Thinking...', '#7b6ef6');
 
-  // If there is an image, run OCR first
-  if (hasImage) {
-    // Show user bubble with image pill
-    addUserBubble(userText, pendingFile.name);
+    // Remove welcome screen
+    const welcome = document.querySelector('.welcome');
+    if (welcome) welcome.remove();
 
-    // Clear input
-    input.value = '';
-    autoResize(input);
+    appendMsg('user', text);
+    history.push({ role: 'user', content: text });
 
-    // Show OCR bar
-    document.getElementById('ocrBar').style.display = 'flex';
+    const typingEl = showTyping();
 
-    let extractedText = '';
     try {
-      // Convert to base64 first to avoid sandbox issues
-      const dataURL = await fileToDataURL(pendingFile);
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [
+            { role: 'system', content: 'You are a helpful, friendly AI assistant. Keep responses clear and concise.' },
+            ...history
+          ],
+          max_tokens: 512,
+          temperature: 0.7
+        })
+      });
 
-      const result = await Tesseract.recognize(
-        dataURL,
-        'eng',
-        {
-          workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-          langPath: 'https://tessdata.projectnaptha.com/4.0.0',
-          corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core-lstm.wasm.js',
-          logger: m => {
-            if (m.status) {
-              document.getElementById('ocrStatus').textContent =
-                m.status.replace(/_/g,' ').toUpperCase();
-            }
-            if (typeof m.progress === 'number') {
-              const pct = Math.round(m.progress * 100);
-              document.getElementById('ocrPct').textContent = pct + '%';
-              document.getElementById('ocrFill').style.width = pct + '%';
-            }
-          }
-        }
-      );
+      const data = await res.json();
 
-      extractedText = result.data.text.trim();
+      if (data.error) throw new Error(data.error.message);
+
+      const reply = data.choices?.[0]?.message?.content || 'No response received.';
+      history.push({ role: 'assistant', content: reply });
+
+      typingEl.remove();
+      appendMsg('ai', reply);
+      setStatus('Ready', '#c8f060');
 
     } catch (err) {
-      document.getElementById('ocrBar').style.display = 'none';
-      addAIBubble('OCR Error: ' + (err.message || JSON.stringify(err)));
-      finishBusy();
+      typingEl.remove();
+      appendMsg('ai', '⚠️ Error: ' + err.message);
+      setStatus('Error', '#f06060');
+      setTimeout(() => setStatus('Ready', '#c8f060'), 3000);
+    }
+
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+
+  // ── MESSAGES ──
+  function appendMsg(role, text) {
+    const chat = document.getElementById('chat');
+    const msg = document.createElement('div');
+    msg.className = `msg ${role}`;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'lbl';
+    lbl.textContent = role === 'user' ? 'You' : 'Assistant';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+
+    msg.appendChild(lbl);
+    msg.appendChild(bubble);
+
+    if (role === 'ai') {
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+
+      const btn = document.createElement('button');
+      btn.className = 'speak-btn';
+      btn.innerHTML = '🔊 Speak';
+      btn.onclick = () => speakText(text, btn);
+
+      actions.appendChild(btn);
+      msg.appendChild(actions);
+    }
+
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function showTyping() {
+    const chat = document.getElementById('chat');
+    const el = document.createElement('div');
+    el.className = 'msg ai';
+    el.innerHTML = `<div class="lbl">Assistant</div><div class="typing"><span></span><span></span><span></span></div>`;
+    chat.appendChild(el);
+    chat.scrollTop = chat.scrollHeight;
+    return el;
+  }
+
+  // ── TTS ──
+  async function speakText(text, btn) {
+    // Stop existing audio
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.src = '';
+      currentAudio = null;
+      if (currentSpeakBtn) {
+        currentSpeakBtn.innerHTML = '🔊 Speak';
+        currentSpeakBtn.classList.remove('playing');
+        currentSpeakBtn.disabled = false;
+      }
+      if (currentSpeakBtn === btn) { currentSpeakBtn = null; return; }
+    }
+
+    if (!hfToken) {
+      alert('Please add your Hugging Face token in Settings to use voice.');
+      openSettings();
       return;
     }
 
-    // Hide OCR bar
-    document.getElementById('ocrBar').style.display = 'none';
-    document.getElementById('ocrFill').style.width = '0%';
+    btn.innerHTML = '⏳ Loading...';
+    btn.disabled = true;
+    currentSpeakBtn = btn;
+    setStatus('Generating voice...', '#7b6ef6');
 
-    // Clear pending image
-    removePendingImage();
+    try {
+      // Trim text to 500 chars max
+      const trimmed = text.length > 500 ? text.substring(0, 497) + '...' : text;
 
-    // Build the invisible message Groq receives
-    let groqMessage = '';
-    if (extractedText.length === 0) {
-      groqMessage = 'The user uploaded an image but no readable text was found in it. Let them know politely.';
-    } else {
-      if (userText) {
-        groqMessage = `The user uploaded an image. Here is the text extracted from it:\n\n"""\n${extractedText}\n"""\n\nThe user also says: "${userText}"\n\nPlease help them.`;
-      } else {
-        groqMessage = `The user uploaded an image. Here is all the text extracted from it:\n\n"""\n${extractedText}\n"""\n\nPlease read this and help the user understand or work with it.`;
+      // Use HF Inference API - CORS friendly
+      const ttsRes = await fetch('https://api-inference.huggingface.co/models/hexgrad/Kokoro-82M', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${hfToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          inputs: trimmed,
+          parameters: { voice: voice }
+        })
+      });
+
+      if (!ttsRes.ok) {
+        const errText = await ttsRes.text();
+        throw new Error(`TTS error ${ttsRes.status}: ${errText.slice(0,100)}`);
       }
+
+      const audioBlob = await ttsRes.blob();
+      const audioSrc = URL.createObjectURL(audioBlob);
+
+      const audio = new Audio(audioSrc);
+      currentAudio = audio;
+
+      btn.innerHTML = '⏹ Stop';
+      btn.disabled = false;
+      btn.classList.add('playing');
+      setStatus('Speaking...', '#c8f060');
+
+      await audio.play();
+
+      audio.onended = () => {
+        btn.innerHTML = '🔊 Speak';
+        btn.classList.remove('playing');
+        currentAudio = null;
+        currentSpeakBtn = null;
+        setStatus('Ready', '#c8f060');
+      };
+
+      audio.onerror = () => {
+        btn.innerHTML = '🔊 Speak';
+        btn.classList.remove('playing');
+        btn.disabled = false;
+        currentAudio = null;
+        currentSpeakBtn = null;
+        setStatus('Voice error', '#f06060');
+        setTimeout(() => setStatus('Ready', '#c8f060'), 2000);
+      };
+
+    } catch (err) {
+      btn.innerHTML = '🔊 Speak';
+      btn.disabled = false;
+      btn.classList.remove('playing');
+      currentSpeakBtn = null;
+      setStatus('Voice failed', '#f06060');
+      setTimeout(() => setStatus('Ready', '#c8f060'), 2000);
+      alert('Voice error: ' + err.message + '\n\nMake sure your HF token is correct.');
     }
-
-    // Send to Groq
-    await callGroq(groqMessage);
-
-  } else {
-    // Pure text message
-    addUserBubble(userText, null);
-    input.value = '';
-    autoResize(input);
-    await callGroq(userText);
   }
-
-  finishBusy();
-}
-
-// ====================================================
-// GROQ API CALL
-// ====================================================
-async function callGroq(userMessage) {
-  // Add to conversation history
-  conversation.push({ role: 'user', content: userMessage });
-
-  // Show typing indicator
-  const typingId = addTypingIndicator();
-
-  try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`
-      },
-      body: JSON.stringify({
-        model: groqModel,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...conversation
-        ],
-        max_tokens: 1024,
-        temperature: 0.7
-      })
-    });
-
-    removeTypingIndicator(typingId);
-
-    if (!response.ok) {
-      const err = await response.json();
-      addAIBubble('Error from Groq: ' + (err.error?.message || response.status));
-      conversation.pop(); // remove failed message
-      return;
-    }
-
-    const data = await response.json();
-    const aiReply = data.choices[0].message.content;
-
-    // Add AI reply to history
-    conversation.push({ role: 'assistant', content: aiReply });
-
-    addAIBubble(aiReply);
-
-  } catch (err) {
-    removeTypingIndicator(typingId);
-    addAIBubble('Network error. Check your internet connection and try again.');
-    conversation.pop();
-  }
-}
-
-// ====================================================
-// UI HELPERS
-// ====================================================
-function addUserBubble(text, imageName) {
-  const wrap = document.getElementById('messagesWrap');
-
-  // Remove welcome message if present
-  const welcome = wrap.querySelector('.welcome-msg');
-  if (welcome) welcome.remove();
-
-  const msg = document.createElement('div');
-  msg.className = 'msg user';
-
-  let content = '';
-  if (imageName) {
-    content += `<div class="img-pill">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="2" y="6" width="20" height="15" rx="3"/>
-        <circle cx="12" cy="13.5" r="3.5"/>
-      </svg>
-      ${imageName}
-    </div>`;
-  }
-  if (text) {
-    content += `<div>${escapeHtml(text)}</div>`;
-  }
-  if (!text && imageName) {
-    content += `<div style="color:var(--muted);font-size:13px;">Analyse this image</div>`;
-  }
-
-  msg.innerHTML = `
-    <div class="avatar user-av">YOU</div>
-    <div class="bubble">${content}</div>`;
-
-  wrap.appendChild(msg);
-  scrollBottom();
-}
-
-function addAIBubble(text) {
-  const wrap = document.getElementById('messagesWrap');
-  const msg = document.createElement('div');
-  msg.className = 'msg ai';
-  msg.innerHTML = `
-    <div class="avatar ai-av">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-        <circle cx="12" cy="8" r="4"/>
-        <path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
-      </svg>
-    </div>
-    <div class="bubble">${formatText(text)}</div>`;
-  wrap.appendChild(msg);
-  scrollBottom();
-}
-
-function addTypingIndicator() {
-  const wrap = document.getElementById('messagesWrap');
-  const id = 'typing-' + Date.now();
-  const msg = document.createElement('div');
-  msg.className = 'msg ai';
-  msg.id = id;
-  msg.innerHTML = `
-    <div class="avatar ai-av">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-        <circle cx="12" cy="8" r="4"/>
-        <path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
-      </svg>
-    </div>
-    <div class="bubble">
-      <div class="typing-indicator">
-        <span></span><span></span><span></span>
-      </div>
-    </div>`;
-  wrap.appendChild(msg);
-  scrollBottom();
-  return id;
-}
-
-function removeTypingIndicator(id) {
-  const el = document.getElementById(id);
-  if (el) el.remove();
-}
-
-function scrollBottom() {
-  const wrap = document.getElementById('messagesWrap');
-  wrap.scrollTop = wrap.scrollHeight;
-}
-
-function finishBusy() {
-  isBusy = false;
-  document.getElementById('btnSend').disabled = false;
-}
-
-// Convert text with newlines to HTML
-function formatText(text) {
-  return escapeHtml(text).replace(/\n/g, '<br/>');
-}
-
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-// ====================================================
-// FILE TO BASE64 using the already-displayed thumbnail
-// The thumbnail is already loaded on screen, so we
-// just draw it onto a canvas. No second file read needed.
-// ====================================================
-function fileToDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const img = document.getElementById('pendingThumb');
-
-    const doCanvas = () => {
-      try {
-        const w = img.naturalWidth  || img.width  || 800;
-        const h = img.naturalHeight || img.height || 600;
-        const canvas = document.createElement('canvas');
-        canvas.width  = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataURL = canvas.toDataURL('image/png');
-        resolve(dataURL);
-      } catch (e) {
-        reject(new Error('Canvas failed: ' + e.message));
-      }
-    };
-
-    // If already loaded just draw it, otherwise wait
-    if (img.complete && img.naturalWidth > 0) {
-      doCanvas();
-    } else {
-      img.onload  = doCanvas;
-      img.onerror = () => reject(new Error('Thumbnail not ready'));
-    }
-  });
-}
-
-// ====================================================
-// INPUT HELPERS
-// ====================================================
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-}
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
 </script>
 </body>
 </html>
